@@ -91,7 +91,7 @@ int main(int argc, char *argv[]){
 	return 1;
    } 
    
-   // wait for parent to exit
+   // wait for child to exit
    wait(NULL);
    return 0;
 
