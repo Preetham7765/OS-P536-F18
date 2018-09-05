@@ -1,0 +1,19 @@
+Orphan Process
+- These are processes where its parent process has completed its execution or has been terminated even though the child process hasn't completed its execution. 
+- If the child process is still running even after its parent process has completed its execution, it becomes an orphan process.
+- Once the process has been orphaned the OS assigns init process as its parent process.
+
+Zombie Process
+- These are processes which have completed their execution but their entry hasn't been removed from the Process Table- a data structure which maintains records of all the processes in the system. 
+- Once the process has completed it execution all its memory and resources are cleaned up in order to reuse them.
+- However, its entry in the Process table still exists with its exit status. This entry is removed once its parent process read the exit status of process. 
+- If the parent process fails to read the exist status of the child process from the Process table then the child process becomes a Zombie process. 
+- Calling kill() on these process doesn't kill this process since the process has already completed its execution.
+- Zombie process is different from orphan process where the later has not finished its execution while the former has finished its execution. 
+
+
+Exec() system call
+- When the exec() system call is called in the child process, the text segment of the child process is replaced with the text segment of the new program specified as the parameter to the exec().
+- Certain resources such as file descriptors are still part of the process with new program. 
+- The Process Id of this new program remains the same as that of the child process.
+- The exec() doesn't return if it succeeds in its execution thus any instructions after exec will not be executed.  
