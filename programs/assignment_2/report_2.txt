@@ -7,8 +7,7 @@ Concurrency design -
 ->A global boolean array of size number of threads is created where index corresponds to the thread number. For example thread 0's state is mapped to 0th index in the array.
 -> Every thread except the first thread waits upon the status of its previous thread. Once a thread finishes it makes its state true in the boolean array and broadcasts to all other waiting 
 threads. The thread waiting for this thread will unblock itself and prints the output and the other threads go back to wait state.
-For example- When the first thread finishes its task, it signals to everyone that it has finished printing. All the threads come out of waiting states and checks the its previous thread. Only second thread
-comes of wait and prints its output. Rest all of them go back to wait state. This process is chained across all the created threads.
+For example- When the first thread finishes its task, it signals to everyone that it has finished printing. All the threads come out of waiting states and checks  the state of its previous thread. Only second thread comes of wait and prints its output. Rest all of them go back to wait state. This process is chained across all the created threads.
 
 
 Piped Inputs
