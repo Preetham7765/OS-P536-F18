@@ -1,6 +1,5 @@
 CC	= 	gcc
 CFLAGS	=	-g -Wall -Iinclude
-CFLAGS  +=	-std=c99
 TARGET	=	pargrep
 all: $(TARGET)
 $(TARGET): $(TARGET).c

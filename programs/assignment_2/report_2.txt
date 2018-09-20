@@ -2,17 +2,18 @@ Concurrency design -
 
 ->Initially the file is divided based upon the size of the file and the number of threads. 
 ->However in order to make sure that the file is split based upon lines, the file pointer is moved to the nearest "\n" towards the right. 
-->Every thread open the file and then seeks to the appropriate position specified in the data passed through the thread and then perform search independently. 
-->Every matched line is added to the local buffer for that particular thread
+->Every thread opens the file and then seeks to the appropriate position specified in the data passed to the thread and then perform search independently. 
+->Every matched line is added to the local buffer for that particular thread.
 ->A global boolean array of size number of threads is created where index corresponds to the thread number. For example thread 0's state is mapped to 0th index in the array.
 -> Every thread except the first thread waits upon the status of its previous thread. Once a thread finishes it makes its state true in the boolean array and broadcasts to all other waiting 
 threads. The thread waiting for this thread will unblock itself and prints the output and the other threads go back to wait state.
+-> In order to achieve this a while loop is used inside every thread. When one thread broadcasts that it is has completed, all the waiting threads which are waiting in a while loop will be signaled. These threads check for the state of the previous thread from the global boolean array. If the state is true, thread comes out of the while loop and prints its buffer. If the state is not true it goes inside the while loop and waits for another thread to signal.   
 For example- When the first thread finishes its task, it signals to everyone that it has finished printing. All the threads come out of waiting states and checks  the state of its previous thread. Only second thread comes of wait and prints its output. Rest all of them go back to wait state. This process is chained across all the created threads.
 
 
 Piped Inputs
 
-In case of piped input the standard input does allow to seek the file pointer. The entire standard input is copied into a character buffer of size 4MB and then a single thread is used to perform the search on this buffer. This is taking time since the entire buffer is read and a single thread is performing search on the entire text
+In case of piped input the standard input does not allow to seek the file pointer. The entire standard input is copied into a character buffer of size 4MB and then a single thread is used to perform the search on this buffer. This is taking time since the entire buffer is read and a single thread is performing search on the entire text
 
 
 Here are the result of both grep and pargrep on a file with the size 3.4MB and searching for "a" word. The values are taken as average over 10 runs.

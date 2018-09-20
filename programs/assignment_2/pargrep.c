@@ -3,6 +3,9 @@
   #include <stdlib.h>
   #include <stdbool.h>
   #include <pthread.h>
+  #include <unistd.h>
+  #include <getopt.h>
+  #include <ctype.h>
 
   #define THREADS 5
   #define BUFSIZE 2048
@@ -42,7 +45,7 @@
   void* grepFile(void *args) {
 
     threadData* data = (threadData*) args;
-    char* buffer = (char *)malloc(data->offset + 1);
+    char* buffer = (char *)calloc(sizeof(char),data->offset + 1);
     FILE* fptr = fopen(data->filename, "r");
 
     if(fptr) {
@@ -129,10 +132,7 @@
         if(match == line || (match != NULL && !isalnum(match[-1]))){
           match += strlen(data->pattern);
           if(!isalnum(*match)){
-            // char *final_output;
-            // printf("%s\n", token);
             sprintf(buffer, "%s%s\n", buffer, token);
-            // strcat(buffer, final_output);
             break;
           }
           else{
@@ -150,22 +150,22 @@
       
     }
     
-    pthread_mutex_lock(&lock);
-      if(data->id ==0){
+    // pthread_mutex_lock(&lock);
+      // if(data->id ==0){
         printf("thread id %d , %s",data->id, buffer);
-        pthread_cond_broadcast(&cond);
-      }
-      else {
-        while(!b[(data->id)-1]){
-          pthread_cond_wait(&cond, &lock);
-        } 
+        // pthread_cond_broadcast(&cond);
+      // }
+      // else {
+        // while(!b[(data->id)-1]){
+          // pthread_cond_wait(&cond, &lock);
+        // } 
       
-      printf("Thread id %d buffer %s", data->id, buffer);
-      pthread_cond_broadcast(&cond);
-      }
+      // printf("Thread id %d buffer %s", data->id, buffer);
+      // pthread_cond_broadcast(&cond);
+      // }
 
-      b[data->id] = true;
-      pthread_mutex_unlock(&lock);
+      // b[data->id] = true;
+      // pthread_mutex_unlock(&lock);
   
       free(buffer);
       pthread_exit(NULL);
@@ -178,7 +178,6 @@
 */
 
   void piped_main(char *pattern, int no_of_threads) {
-
     char *pipe_buffer = (char *)calloc(BUFSIZE * BUFSIZE, sizeof(char));
     FILE *fptr;
     pthread_t threads[no_of_threads];
@@ -186,9 +185,8 @@
     size_t fileSize=0;
   
     fptr = fopen("/dev/stdin", "r");
-
     if(fptr < 0){
-      return;
+      return ;
     }
 
     fread(pipe_buffer,1, BUFSIZE * BUFSIZE, fptr);
@@ -221,13 +219,11 @@
       pthread_create(&threads[i], NULL, &pipedgrepFile, data[i]);  
     }
     
-    for(int i=0; i<no_of_threads; i++) {
+    
+    for(i=0; i<no_of_threads; i++) {
         pthread_join(threads[i], NULL);
     }
-
     free(pipe_buffer);
-    pthread_cond_destroy(&cond);
-    pthread_mutex_destroy(&lock);
     for(i=0;i<no_of_threads; i++){
       free(data[i]->pattern);
       free(data[i]->filename);
@@ -261,50 +257,83 @@
     // ./paragrep word -t 100
     // ./paragrep word [-t] [filename]
     // ./paragrep word filename -t
+    int c ;
+    int tflag = 0;
+    int i;
 
     if(argc == 1){
-      printf("Too few arguments");
-      return 0;
-    }
-    else if(argc == 2){
-      strcpy(*word,argv[1]);
-    }
-    else if(argc == 3){
-      for(int arg=0; arg < argc; arg++){
-        if(strstr(argv[arg], "-t")){
-          printf("Invalid arguments passed\n");
-          return 0;
-        }
-      }
-      strcpy(*word,argv[1]);
-      strcpy(*filename,argv[2]);
-    }
-    else if(argc == 5){
-      for(int arg=1; arg < argc; arg++){
-        if(!strcmp(argv[arg],"-t")){
-          if(arg == argc -1){
-            printf("Invalid arguments passed\n");
-            return 0;
-          }
-          else {
-            *no_of_threads = atoi(argv[arg + 1]);
-            arg++;
-          }
-        }
-        else if(!strcmp(*word," ")){
-          strcpy(*word, argv[arg]); 
-        }
-        else{
-          strcpy(*filename, argv[arg]); 
-        }
-      }
-    }
-    else {
-      printf("Invalid number of arguments\n");
+      printf("Usage ./paragrep [-t] <word> <filename>\n");
       return 0;
     }
 
+    if(argc == 2){
+      if(!isatty(fileno(stdin))){
+        strcpy(*word,argv[1] );
+        return 1;
+      }
+      else{ 
+        printf("Usage ./paragrep [-t] <word> <filename>\n");
+        return 0;
+      }
+    }
+
+    while((c = getopt(argc, argv, "t:")) != -1) {
+
+        switch(c){
+
+          case 't':{
+            if(!tflag){
+              if(optarg != NULL){
+                *no_of_threads = atoi(optarg);
+              }
+            }
+            else {
+              printf("-t option alerady present\n");
+              return 0;
+            }
+            break;
+          }
+          case '?':{
+            if(optopt == 't'){
+              printf("Option -%c requires an argument", optopt);
+              return 0;
+            }
+            else {
+              printf("Unknown Option -%c\n", optopt);
+              return 0;
+            }
+          }
+          default:{
+            printf("Error invalid input\n");
+          }
+
+        }
+
+    }
+    for(i= optind; i< argc; i++){
+
+      if(!strcmp(*word," ")){
+          strcpy(*word, argv[i]); 
+        }
+        else{
+          strcpy(*filename, argv[i]); 
+        }
+      
+    }
+
+    if(!isatty(fileno(stdin)) && strcmp(*filename, " ")) {
+        printf("Invalid argument filename should be empty\n");
+        return 0;
+    }
+
+    if(!strcmp(*word, " ")){
+      printf("Invalid argument word should not be empty\n");
+      return 0;
+    }
+
+
     return 1;
+
   }
 /*
 * Driver function to handles searches given through commandline
@@ -312,7 +341,7 @@
 */
 
   int arg_input(char* filename, char *pattern, int no_of_threads) {
-
+    
     FILE *fptr;
     pthread_t threads[no_of_threads];
     threadData *data[no_of_threads];
@@ -320,17 +349,18 @@
     size_t fileSize=0;
 
     fptr = fopen(filename, "r");
-    if(fptr < 0){
+    if(fptr == NULL){
+      printf("File not found \n");
       return -1;
     }
-
+    
     fseek(fptr,0,SEEK_END);
     fileSize = ftell(fptr);
     fseek(fptr,0,SEEK_SET);
     int closestLine = 0;
     int i=0;
     int temp =0;
-
+    
     for(i=0; i< no_of_threads-1; i++){
       
       setupThreadData(&data[i], filename, pattern);
@@ -339,7 +369,7 @@
       strcpy(data[i]->pattern, pattern);
       strcpy(data[i]->filename,filename);
       
-      data[i]->start = i * fileSize/no_of_threads + temp;
+      data[i]->start = (i * fileSize/no_of_threads) + temp;
       fseek(fptr, fileSize/no_of_threads, SEEK_CUR);
       closestLine = 0;
       data[i]->offset = (fileSize/no_of_threads);
@@ -348,7 +378,7 @@
       }
 
       data[i]->offset +=  closestLine;
-      temp+= closestLine + 1;
+      temp+= closestLine;
       pthread_create(&threads[i], NULL, &grepFile, data[i]);
     }
     setupThreadData(&data[i], filename, pattern);
@@ -361,7 +391,7 @@
     data[i]->offset = fileSize - data[i]->start;
     pthread_create(&threads[i], NULL, &grepFile, data[i]);
 
-    for(int i=0; i<no_of_threads; i++) {
+    for(i=0; i<no_of_threads; i++) {
         pthread_join(threads[i], NULL);
     }
     
@@ -391,9 +421,13 @@
     if(! parseArguments(argc, argv, &filename, &pattern, &no_of_threads)){
         return 1;
     }
+
+    // printf("Number of threads %d Filename %s word %s\n",no_of_threads,filename, pattern);
+    
     b = (bool *)malloc(no_of_threads);
     
     if(!strcmp(filename," ")){
+      
         piped_main(pattern, 1);
     }
     else {
@@ -405,6 +439,7 @@
     free(filename);
     free(pattern);
     free(b);
+    
 
     return 0;
   }
