@@ -1,0 +1,3 @@
+This is the first line containing a word.
+Words are overrated anyway. //Note that grep is case sensitive by default.
+The last word.
