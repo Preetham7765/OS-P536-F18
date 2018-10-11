@@ -1,6 +1,7 @@
 /* newqueue.c - newqueue */
 
 #include <xinu.h>
+#include <stdio.h>
 
 /*------------------------------------------------------------------------
  *  newqueue  -  Allocate and initialize a queue in the global queue table
