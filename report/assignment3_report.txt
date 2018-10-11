@@ -1,0 +1,36 @@
+FUTURE_EXCLUSIVE
+
+1. The pid field of the future is used to save the process pid which is waiting for the future value. 
+2. Whenever a process tries to get the value of the future, a future can be in 3 possible states
+  -> EMPTY- when in empty state the process pid is saved in the future and suspend() is called for that process
+  -> WAITING - waiting state means some other process is already waiting on this future . Thus it returns error.
+  -> READY - the future value is already available and this value is returned.
+  
+3. The process setting the future value gets the pid from the futures sets the future value and resumes the pid which is present in the future.
+4. If there is no waiting pid the future simply write the value and change the state to ready.
+5. Mulitple writes to the same future return error unless another process is wating for the value.
+
+
+FUTURE_SHARED
+
+1. In order to achive one(writer) to many(readers) relationship, a custom queue is used to capture all the reader processes. This queue is implemented using LinkedList.
+2. When the process tries to get the future value if the state is 
+   ->EMPTY or WAITING - change the state to waiting and push process id to the get queue and suspend the process.
+   -> READY - if the value has already been written then the the future value is returned.
+3. When the process tries to set the future value if the future state is
+  -> EMPTY - the value is set to the future's value and the state is changed t0 READY
+  -> WAITING - the value is set and each process in the queue is poped and resumed.
+  -> READY - multiple calls to set returns ERROR.
+
+
+FUTURE_QUEUE
+
+1. In order to achive many(readers) to many(writers) relationship, two custom queues are created, one for the processes that sets the value and other for the process that fetches the value.
+2. When a process tries to get the value if the state of future is
+  ->EMPTY or WAITING - push the process id into the queue and suspend the process.
+  ->READY - check if the set queue is empty if empty then get the future's value from the future otherwise pop the front of the set queue to get the value.
+3. When a process tries to set the value if the state of the future is
+  ->EMPTY - push the process id setting the queue to the end of the queue.
+  ->WAITING- set the value to the future's value, set the state to READY and resume the poped process. 
+  ->READY - subsequent calls to set will push the process ids to the set queue.
+ 
