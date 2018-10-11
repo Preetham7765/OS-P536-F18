@@ -110,7 +110,7 @@ syscall future_get(future_t *f, int *value) {
            // if it is in empty or waiting push it to the get queue and suspend the current process
           if(f->state == FUTURE_EMPTY || f->state == FUTURE_WAITING) {
 		f->state = FUTURE_WAITING;
-                push_back(f->get_queue,(int32)currpid);
+                push_back(f->get_queue, currpid);
 		suspend(currpid);
           }
           // if the future value is ready then return that value
@@ -127,27 +127,33 @@ syscall future_get(future_t *f, int *value) {
 	   // when the state is empty or waiting(no process has set the value) keep pushing it to the get queue
 	    if(f->state == FUTURE_EMPTY || f->state == FUTURE_WAITING) {
               f->state = FUTURE_WAITING;
-              push_back(f->get_queue, (int32)currpid);
+              push_back(f->get_queue, currpid);
               suspend(currpid);
             }
-            // if there is any process in the set queue then pop from the front of the set queue and return its value
+            // if the state is ready and the set queue is empty then directly take the val
+            // otherwise pop the top of the setqueue and resume.
+            // Meanwhile suspend the current process
             if(f->state == FUTURE_READY){
-                int32 value_from_prod;
-                if(size(f->set_queue) != 0){
-       		    value_from_prod = pop_front(f->set_queue);
-                    *value = value_from_prod;
-                }
-                if(size(f->set_queue) ==0){
-			*value = f->value;	
-			f->state = FUTURE_WAITING;
+
+		if(size(f->set_queue) == 0){
+		   *value = f->value;
+                    if(sizeof(f->get_queue) != 0)
+		    	f->state = FUTURE_WAITING;
+                    else
+		       f->state = FUTURE_EMPTY;
 		}
-               /*
-                if(size(f->set_queue) == 0){
-                  if(size(f->get_queue) == 0)
-                  	f->state = FUTURE_EMPTY;
-	          else
-                      f->state = FUTURE_WAITING;
-                }*/
+		else {
+                    pid32 pid;
+                    push_back(f->get_queue, currpid);
+                    f->state = FUTURE_WAITING;
+                    pid = pop_front(f->set_queue);
+                    resume(pid);
+		    suspend(currpid);
+		    *value = f->value;// take the new value updated by the resumed process.
+                    if(sizeof(f->set_queue) == 0 && sizeof(f->get_queue) == 0){
+		    	f->state = FUTURE_EMPTY;
+                    }
+                }
                 return OK;      
            
             }
@@ -219,7 +225,7 @@ syscall future_set(future_t *f, int value) {
                    pid32 pid;
                    f->value =value;
                    f->state= FUTURE_READY;  
-                   while((pid =(pid32)pop_front(f->get_queue)) != -1){
+                   while((pid = pop_front(f->get_queue)) != -1){
 			resume(pid);
                   }
                  
@@ -236,25 +242,20 @@ syscall future_set(future_t *f, int value) {
         }
 	// mode is  queue
         case FUTURE_QUEUE : {
-		// if the future is empty push the set request to the queue
-                if(f->state == FUTURE_EMPTY){
-		   push_back(f->set_queue, value);
+		// if the future is empty or push the set request to the queue
+                if(f->state == FUTURE_EMPTY || f->state == FUTURE_READY){
+		   push_back(f->set_queue, currpid);
                    f->state = FUTURE_READY;
-                   return OK;
+                   suspend(currpid);
                 }
-                // if the future is in waiting then set the value and resume the first pid in the queue
-                else if(f->state == FUTURE_WAITING) {
+                // if the future is in waiting then set the value and resume the first pid in the queue.
+                if(f->state == FUTURE_WAITING) {
                    f->value = value;
                    f->state = FUTURE_READY;
-		   pid32 pid = (pid32)pop_front(f->get_queue);
+		   pid32 pid = pop_front(f->get_queue);
                    resume(pid);
                    return OK;
                 
-                }
-                // keep pushing the set request to the end
-		else if(f-> state == FUTURE_READY) {
-		  push_back(f->set_queue,value);
-		  return OK;
                 }
                break;
                 

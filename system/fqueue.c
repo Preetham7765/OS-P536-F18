@@ -28,7 +28,7 @@ queue* create_queue() {
  *Input: pointer to the queue and the value to be added
  *
  */
-void push_back(queue *q, int32 value){
+void push_back(queue *q, pid32 value){
 
    node* new_node = (node *)getmem(sizeof(node));
   
@@ -58,9 +58,9 @@ void push_back(queue *q, int32 value){
  *Return: value at the front end of the queue
  */
 
-int32 pop_front(queue *q) { 
+pid32 pop_front(queue *q) { 
 
-  int32 value;
+  pid32 value;
 
   if(q->front == NULL){
        return -1;
