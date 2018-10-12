@@ -137,7 +137,7 @@ syscall future_get(future_t *f, int *value) {
 
 		if(size(f->set_queue) == 0){
 		   *value = f->value;
-                    if(sizeof(f->get_queue) != 0)
+                    if(size(f->get_queue) != 0)
 		    	f->state = FUTURE_WAITING;
                     else
 		       f->state = FUTURE_EMPTY;
@@ -150,7 +150,7 @@ syscall future_get(future_t *f, int *value) {
                     resume(pid);
 		    suspend(currpid);
 		    *value = f->value;// take the new value updated by the resumed process.
-                    if(sizeof(f->set_queue) == 0 && sizeof(f->get_queue) == 0){
+                    if(size(f->set_queue) == 0 && size(f->get_queue) == 0){
 		    	f->state = FUTURE_EMPTY;
                     }
                 }
